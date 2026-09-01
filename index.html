@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เว็บเมนูอาหาร - Food Menu Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Prompt) -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f8fafc;
+        }
+        .eaten-card {
+            opacity: 0.75;
+            filter: grayscale(20%);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 pb-12">
+
+    <!-- Header Section -->
+    <header class="bg-emerald-600 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2.5 rounded-full text-emerald-600 shadow">
+                    <i class="fa-solid fa-utensils text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold leading-tight">Food Check-in</h1>
+                    <p class="text-xs text-emerald-100">เช็ครายการอาหารที่กินไปแล้ววันนี้</p>
+                </div>
+            </div>
+            <!-- Reset Button -->
+            <button onclick="resetAll()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-medium px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>รีเซ็ตการบันทึก</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 pt-6 sm:px-6">
+
+        <!-- Progress Bar Card -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mb-6">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-semibold text-slate-600">ความคืบหน้าการกินวันนี้</span>
+                <span id="progress-text" class="text-sm font-bold text-emerald-600">0 / 0 (0%)</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
+                <div id="progress-bar" class="bg-emerald-500 h-3.5 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Filter and Search Section -->
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <!-- Category Tabs -->
+            <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                <button onclick="filterCategory('all')" class="cat-btn active bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm" data-cat="all">ทั้งหมด</button>
+                <button onclick="filterCategory('main')" class="cat-btn bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition" data-cat="main">อาหารจานหลัก</button>
+                <button onclick="filterCategory('dessert')" class="cat-btn bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition" data-cat="dessert">ของหวาน</button>
+                <button onclick="filterCategory('drink')" class="cat-btn bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition" data-cat="drink">เครื่องดื่ม</button>
+            </div>
+
+            <!-- Status Filter & Search Input -->
+            <div class="flex gap-2 w-full md:w-auto">
+                <div class="relative flex-grow">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="search-input" oninput="renderMenu()" placeholder="ค้นหาชื่ออาหาร..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <select id="status-filter" onchange="renderMenu()" class="bg-white border border-slate-200 text-slate-600 rounded-xl text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <option value="all">สถานะทั้งหมด</option>
+                    <option value="uneaten">ยังไม่ได้กิน</option>
+                    <option value="eaten">กินแล้ว</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Food Menu Grid -->
+        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Dynamic Content loaded via Javascript -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 mt-4">
+            <i class="fa-solid fa-bowl-food text-4xl text-slate-300 mb-3"></i>
+            <p class="text-slate-500 font-medium">ไม่พบรายการอาหารที่ค้นหา</p>
+        </div>
+
+    </main>
+
+    <!-- Custom Dialog Modal for Reset Confirmation -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-xl">
+            <div class="w-12 h-12 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 mb-2">ล้างข้อมูลการกิน?</h3>
+            <p class="text-sm text-slate-500 mb-6">คุณต้องการยกเลิกสถานะ "กินแล้ว" ของทุกรายการหรือไม่?</p>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl font-medium text-sm hover:bg-slate-50">ยกเลิก</button>
+                <button onclick="confirmReset()" class="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-medium text-sm shadow-sm">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default Sample Food Data
+        const initialFoods = [
+            { id: 1, name: "ผัดไทยกุ้งสด", category: "main", calories: 550, image: "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=500&q=80", eaten: false },
+            { id: 2, name: "ข้าวมันไก่", category: "main", calories: 600, image: "https://images.unsplash.com/photo-1626804475297-4160820cca34?auto=format&fit=crop&w=500&q=80", eaten: false },
+            { id: 3, name: "ส้มตำไทย", category: "main", calories: 180, image: "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?auto=format&fit=crop&w=500&q=80", eaten: false },
+            { id: 4, name: "ต้มยำกุ้ง", category: "main", calories: 320, image: "https://images.unsplash.com/photo-1548943487-a2e4e43b4853?auto=format&fit=crop&w=500&q=80", eaten: false },
+            { id: 5, name: "ข้าวเหนียวมะม่วง", category: "dessert", calories: 450, image: "https://images.unsplash.com/photo-1528740561666-dc2479dc08ab?auto=format&fit=crop&w=500&q=80", eaten: false },
+            { id: 6, name: "ไอศกรีมกะทิ", category: "dessert", calories: 220, image: "https://images.unsplash.com/photo-1567206563064-6f60f4078b57?auto=format&fit=crop&w=500&q=80", eaten: false },
+            { id: 7, name: "ชาไทยเย็น", category: "drink", calories: 200, image: "https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=500&q=80", eaten: false },
+            { id: 8, name: "กาแฟอเมริกาโน่เย็น", category: "drink", calories: 15, image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=500&q=80", eaten: false }
+        ];
+
+        // State Variable
+        let foods = [...initialFoods];
+        let currentCategory = 'all';
+
+        // Load data on start
+        window.onload = function() {
+            renderMenu();
+        };
+
+        // Render Menu Cards
+        function renderMenu() {
+            const grid = document.getElementById('menu-grid');
+            const emptyState = document.getElementById('empty-state');
+            const searchKeyword = document.getElementById('search-input').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('status-filter').value;
+
+            // Filter logic
+            const filtered = foods.filter(item => {
+                const matchCategory = (currentCategory === 'all' || item.category === currentCategory);
+                const matchSearch = item.name.toLowerCase().includes(searchKeyword);
+                
+                let matchStatus = true;
+                if (statusFilter === 'eaten') matchStatus = item.eaten;
+                if (statusFilter === 'uneaten') matchStatus = !item.eaten;
+
+                return matchCategory && matchSearch && matchStatus;
+            });
+
+            // Display Empty State if no result
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                grid.innerHTML = filtered.map(item => `
+                    <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-4 ${item.eaten ? 'eaten-card bg-slate-50 border-emerald-200' : ''}">
+                        
+                        <div class="flex items-center gap-3.5 min-w-0">
+                            <!-- Image with Fallback -->
+                            <div class="relative flex-shrink-0">
+                                <img src="${item.image}" alt="${item.name}" 
+                                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=150&q=80';" 
+                                     class="w-16 h-16 rounded-xl object-cover">
+                                ${item.eaten ? `
+                                    <div class="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-sm">
+                                        <i class="fa-solid fa-check"></i>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <!-- Info -->
+                            <div class="truncate">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-semibold text-slate-800 text-base truncate ${item.eaten ? 'line-through text-slate-500' : ''}">${item.name}</h3>
+                                </div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-xs px-2 py-0.5 rounded-md font-medium ${getCategoryBadge(item.category)}">
+                                        ${getCategoryName(item.category)}
+                                    </span>
+                                    <span class="text-xs text-slate-400"><i class="fa-solid fa-fire text-amber-500 mr-1"></i>${item.calories} แคล</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Button -->
+                        <div class="flex-shrink-0">
+                            <button onclick="toggleEaten(${item.id})" 
+                                class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+                                    item.eaten 
+                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-300' 
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow'
+                                }">
+                                <i class="fa-solid ${item.eaten ? 'fa-circle-check text-emerald-600' : 'fa-plus'}"></i>
+                                <span>${item.eaten ? 'กินแล้ว' : 'กดว่ากินแล้ว'}</span>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateProgress();
+        }
+
+        // Toggle Eaten Status
+        function toggleEaten(id) {
+            foods = foods.map(item => {
+                if (item.id === id) {
+                    return { ...item, eaten: !item.eaten };
+                }
+                return item;
+            });
+            renderMenu();
+        }
+
+        // Category Filter Tabs
+        function filterCategory(cat) {
+            currentCategory = cat;
+            
+            // Update Tab UI
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if (btn.dataset.cat === cat) {
+                    btn.className = "cat-btn active bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm";
+                } else {
+                    btn.className = "cat-btn bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition";
+                }
+            });
+
+            renderMenu();
+        }
+
+        // Update Progress Bar & Text
+        function updateProgress() {
+            const total = foods.length;
+            const eatenCount = foods.filter(f => f.eaten).length;
+            const percentage = total > 0 ? Math.round((eatenCount / total) * 100) : 0;
+
+            document.getElementById('progress-bar').style.width = `${percentage}%`;
+            document.getElementById('progress-text').innerText = `${eatenCount} / ${total} รายการ (${percentage}%)`;
+        }
+
+        // Modal Handlers
+        function resetAll() {
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        function confirmReset() {
+            foods = foods.map(item => ({ ...item, eaten: false }));
+            renderMenu();
+            closeModal();
+        }
+
+        // Helper Functions for Badges
+        function getCategoryName(cat) {
+            switch (cat) {
+                case 'main': return 'อาหารจานหลัก';
+                case 'dessert': return 'ของหวาน';
+                case 'drink': return 'เครื่องดื่ม';
+                default: return 'ทั่วไป';
+            }
+        }
+
+        function getCategoryBadge(cat) {
+            switch (cat) {
+                case 'main': return 'bg-amber-50 text-amber-700 border border-amber-200';
+                case 'dessert': return 'bg-pink-50 text-pink-700 border border-pink-200';
+                case 'drink': return 'bg-sky-50 text-sky-700 border border-sky-200';
+                default: return 'bg-slate-100 text-slate-600';
+            }
+        }
+    </script>
+</body>
+</html>
