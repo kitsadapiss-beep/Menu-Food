@@ -82,7 +82,11 @@
 
         <!-- Food Menu Grid -->
         <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Dynamic Content loaded via Javascript -->
+            <!-- Loading Indicator -->
+            <div id="loading-state" class="col-span-full text-center py-12">
+                <i class="fa-solid fa-spinner fa-spin text-3xl text-emerald-600 mb-2"></i>
+                <p class="text-slate-500 text-sm">กำลังโหลดข้อมูลจาก Google Sheets...</p>
+            </div>
         </div>
 
         <!-- Empty State -->
@@ -109,35 +113,37 @@
     </div>
 
     <script>
-        // Default Sample Food Data
-        const initialFoods = [
-            { id: 1, name: "ผัดไทยกุ้งสด", category: "main", calories: 550, image: "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=500&q=80", eaten: false },
-            { id: 2, name: "ข้าวมันไก่", category: "main", calories: 600, image: "https://images.unsplash.com/photo-1626804475297-4160820cca34?auto=format&fit=crop&w=500&q=80", eaten: false },
-            { id: 3, name: "ส้มตำไทย", category: "main", calories: 180, image: "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?auto=format&fit=crop&w=500&q=80", eaten: false },
-            { id: 4, name: "ต้มยำกุ้ง", category: "main", calories: 320, image: "https://images.unsplash.com/photo-1548943487-a2e4e43b4853?auto=format&fit=crop&w=500&q=80", eaten: false },
-            { id: 5, name: "ข้าวเหนียวมะม่วง", category: "dessert", calories: 450, image: "https://images.unsplash.com/photo-1528740561666-dc2479dc08ab?auto=format&fit=crop&w=500&q=80", eaten: false },
-            { id: 6, name: "ไอศกรีมกะทิ", category: "dessert", calories: 220, image: "https://images.unsplash.com/photo-1567206563064-6f60f4078b57?auto=format&fit=crop&w=500&q=80", eaten: false },
-            { id: 7, name: "ชาไทยเย็น", category: "drink", calories: 200, image: "https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=500&q=80", eaten: false },
-            { id: 8, name: "กาแฟอเมริกาโน่เย็น", category: "drink", calories: 15, image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=500&q=80", eaten: false }
-        ];
+        // กำหนด URL ของ Google Apps Script Web App
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwsQRm5cNRX7JfiwU4rTay6_U_rq1PZ2WKCifwntcdrgNv76wNO6CV-HzFjGITdtgihyg/exec";
 
-        // State Variable
-        let foods = [...initialFoods];
+        let foods = [];
         let currentCategory = 'all';
 
-        // Load data on start
         window.onload = function() {
-            renderMenu();
+            fetchFoods();
         };
 
-        // Render Menu Cards
+        // ดึงข้อมูลจาก Google Sheets
+        async function fetchFoods() {
+            try {
+                const response = await fetch(SCRIPT_URL);
+                foods = await response.json();
+                renderMenu();
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.getElementById('menu-grid').innerHTML = `
+                    <div class="col-span-full text-center py-8 text-rose-500">
+                        เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาตรวจสอบการเชื่อมต่อ
+                    </div>`;
+            }
+        }
+
         function renderMenu() {
             const grid = document.getElementById('menu-grid');
             const emptyState = document.getElementById('empty-state');
             const searchKeyword = document.getElementById('search-input').value.toLowerCase().trim();
             const statusFilter = document.getElementById('status-filter').value;
 
-            // Filter logic
             const filtered = foods.filter(item => {
                 const matchCategory = (currentCategory === 'all' || item.category === currentCategory);
                 const matchSearch = item.name.toLowerCase().includes(searchKeyword);
@@ -149,7 +155,6 @@
                 return matchCategory && matchSearch && matchStatus;
             });
 
-            // Display Empty State if no result
             if (filtered.length === 0) {
                 grid.innerHTML = '';
                 emptyState.classList.remove('hidden');
@@ -159,7 +164,6 @@
                     <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-4 ${item.eaten ? 'eaten-card bg-slate-50 border-emerald-200' : ''}">
                         
                         <div class="flex items-center gap-3.5 min-w-0">
-                            <!-- Image with Fallback -->
                             <div class="relative flex-shrink-0">
                                 <img src="${item.image}" alt="${item.name}" 
                                      onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=150&q=80';" 
@@ -171,7 +175,6 @@
                                 ` : ''}
                             </div>
                             
-                            <!-- Info -->
                             <div class="truncate">
                                 <div class="flex items-center gap-2">
                                     <h3 class="font-semibold text-slate-800 text-base truncate ${item.eaten ? 'line-through text-slate-500' : ''}">${item.name}</h3>
@@ -185,7 +188,6 @@
                             </div>
                         </div>
 
-                        <!-- Action Button -->
                         <div class="flex-shrink-0">
                             <button onclick="toggleEaten(${item.id})" 
                                 class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 ${
@@ -204,34 +206,33 @@
             updateProgress();
         }
 
-        // Toggle Eaten Status
-        function toggleEaten(id) {
-            foods = foods.map(item => {
-                if (item.id === id) {
-                    return { ...item, eaten: !item.eaten };
-                }
-                return item;
-            });
+        // อัปเดตสถานะที่หน้าเว็บและส่งค่าไปบันทึกบน Google Sheets
+        async function toggleEaten(id) {
+            foods = foods.map(item => item.id === id ? { ...item, eaten: !item.eaten } : item);
             renderMenu();
+
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'toggle', id: id })
+                });
+            } catch (err) {
+                console.error("Error updating eaten status:", err);
+            }
         }
 
-        // Category Filter Tabs
         function filterCategory(cat) {
             currentCategory = cat;
-            
-            // Update Tab UI
             document.querySelectorAll('.cat-btn').forEach(btn => {
-                if (btn.dataset.cat === cat) {
-                    btn.className = "cat-btn active bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm";
-                } else {
-                    btn.className = "cat-btn bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition";
-                }
+                btn.className = btn.dataset.cat === cat 
+                    ? "cat-btn active bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm"
+                    : "cat-btn bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition";
             });
-
             renderMenu();
         }
 
-        // Update Progress Bar & Text
         function updateProgress() {
             const total = foods.length;
             const eatenCount = foods.filter(f => f.eaten).length;
@@ -241,7 +242,6 @@
             document.getElementById('progress-text').innerText = `${eatenCount} / ${total} รายการ (${percentage}%)`;
         }
 
-        // Modal Handlers
         function resetAll() {
             document.getElementById('confirm-modal').classList.remove('hidden');
         }
@@ -250,13 +250,23 @@
             document.getElementById('confirm-modal').classList.add('hidden');
         }
 
-        function confirmReset() {
+        async function confirmReset() {
             foods = foods.map(item => ({ ...item, eaten: false }));
             renderMenu();
             closeModal();
+
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reset' })
+                });
+            } catch (err) {
+                console.error("Error resetting data:", err);
+            }
         }
 
-        // Helper Functions for Badges
         function getCategoryName(cat) {
             switch (cat) {
                 case 'main': return 'อาหารจานหลัก';
